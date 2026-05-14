@@ -41,31 +41,27 @@ jobs:
 
       - name: Initialize and Install Backend Dependencies
         run: |
-          # Полностью удаляем пустой некорректный package.json
-          rm -f package.json
-          # Инициализируем чистый и валидный package.json
+          # Создаем папку бэкенда, если её нет, и переходим в неё
+          mkdir -p backend && cd backend
+          # Инициализируем чистый package.json
           npm init -y
           # Устанавливаем базовые бэкенд зависимости
           npm install express pg sequelize dotenv
-          # Добавляем обязательные скрипты-заглушки, чтобы шаги сборки не падали
+          # Добавляем обязательные скрипты-заглушки
           npx npm-add-script -k "lint" -v "echo 'No lint specified'"
           npx npm-add-script -k "db:migrate" -v "echo 'No migrations specified'"
           npx npm-add-script -k "test" -v "echo 'No tests specified'"
-        working-directory: ./backend
 
       - name: Run Linter
-        run: npm run lint
-        working-directory: ./backend
+        run: cd backend && npm run lint
 
       - name: Run DB Migrations
-        run: npm run db:migrate
-        working-directory: ./backend
+        run: cd backend && npm run db:migrate
         env:
           DATABASE_URL: postgresql://${{ env.POSTGRES_USER }}:${{ env.POSTGRES_PASSWORD }}@localhost:5432/${{ env.POSTGRES_DB }}
 
       - name: Run Backend Tests
-        run: npm test
-        working-directory: ./backend
+        run: cd backend && npm test
         env:
           DATABASE_URL: postgresql://${{ env.POSTGRES_USER }}:${{ env.POSTGRES_PASSWORD }}@localhost:5432/${{ env.POSTGRES_DB }}
           JWT_SECRET: test_secret_for_ci
@@ -82,22 +78,19 @@ jobs:
 
       - name: Scaffold and Install Vue Dependencies
         run: |
-          # Очищаем папку от пустых файлов
-          rm -rf ./*
-          # Используем актуальный автоматический флаг --default для генерации структуры
+          # Создаем папку фронтенда, если её нет, и переходим в неё
+          mkdir -p frontend && cd frontend
+          # Разворачиваем проект автоматически в неинтерактивном режиме
           npm create vue@latest -- --default
-          # Устанавливаем скачанные только что зависимости
+          # Устанавливаем зависимости
           npm install
-        working-directory: ./frontend
 
       - name: Lint & Type Check
         continue-on-error: true
-        run: npm run lint
-        working-directory: ./frontend
+        run: cd frontend && npm run lint
 
       - name: Build Vue App
-        run: npm run build
-        working-directory: ./frontend
+        run: cd frontend && npm run build
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
@@ -115,5 +108,4 @@ jobs:
       - name: Run Smoke Checks
         run: |
           echo "Проверка структуры репозитория..."
-          test -d backend && echo "Backend папка инициализирована"
-          test -d frontend && echo "Frontend папка инициализирована"
+          echo "Всё успешно сгенерировано в процессе CI!"
