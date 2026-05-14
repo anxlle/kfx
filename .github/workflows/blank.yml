@@ -44,10 +44,23 @@ jobs:
           mkdir -p backend && cd backend
           npm init -y
           npm install express pg sequelize dotenv
-          # Добавляем скрипты-заглушки (игнорируя ошибку перезаписи существующего "test")
           npx npm-add-script -k "lint" -v "echo 'No lint specified'"
           npx npm-add-script -k "db:migrate" -v "echo 'No migrations specified'"
           npx npm-add-script -k "test" -v "echo 'No tests specified'" --force
+
+      - name: Run Linter
+        run: cd backend && npm run lint
+
+      - name: Run DB Migrations
+        run: cd backend && npm run db:migrate
+        env:
+          DATABASE_URL: postgresql://${{ env.POSTGRES_USER }}:${{ env.POSTGRES_PASSWORD }}@localhost:5432/${{ env.POSTGRES_DB }}
+
+      - name: Run Backend Tests
+        run: cd backend && npm test
+        env:
+          DATABASE_URL: postgresql://${{ env.POSTGRES_USER }}:${{ env.POSTGRES_PASSWORD }}@localhost:5432/${{ env.POSTGRES_DB }}
+          JWT_SECRET: test_secret_for_ci
 
   frontend-ci:
     runs-on: ubuntu-latest
@@ -61,10 +74,18 @@ jobs:
 
       - name: Scaffold and Install Vue Dependencies
         run: |
-          mkdir -p frontend && cd frontend
-          # Генерируем проект Vue прямо в текущей папке '.', без создания подпапок
-          npm create vue@latest -- . --default
-          npm install
+          # Создаем проект во временной папке без интерактива
+          npm create vue@latest -- tmp-vue-project --default
+          
+          # Создаем целевую папку frontend
+          mkdir -p frontend
+          
+          # Переносим файлы (включая скрытые конфигурации)
+          shopt -s dotglob
+          mv tmp-vue-project/* frontend/
+          
+          # Устанавливаем зависимости
+          cd frontend && npm install
 
       - name: Build Vue App
         run: |
